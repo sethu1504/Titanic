@@ -21,17 +21,22 @@ submit_data_names = pd.DataFrame(submit_data, columns=['Name'])
 del submit_data['Ticket']
 del submit_data['PassengerId']
 
-### Data Preprocessing ###
+### FEATURE ENGINEERING - Data Preprocessing ###
+
+###Introduce New variables based on titles of passengers ###
 data['Title'] = data['Name'].map(lambda name: name.split(',')[1].split('.')[0].strip())
 submit_data['Title'] = submit_data['Name'].map(lambda name: name.split(',')[1].split('.')[0].strip())
 del data['Name']
 del submit_data['Name']
+
+###Numeric Features ###
 numeric_features = list(data.dtypes[data.dtypes != 'object'].index)
 numeric_features.remove('Pclass')
 age_dict = {}
 age_dict_submit = {}
 for feature in numeric_features:
     if feature == 'Age':
+        ### Replace NA age by computing the mean of ages based on Sex, Pclass and Sex ###
         for index, row in data.iterrows():
             age = row['Age']
             if math.isnan(age):
@@ -64,6 +69,7 @@ for feature in numeric_features:
         data[feature].fillna(np.mean(data[feature]), inplace=True)
         submit_data[feature].fillna(np.mean(submit_data[feature]), inplace=True)
 
+### Classification Variables ###
 classi_features = list(data.dtypes[data.dtypes == 'object'].index)
 classi_features.append('Pclass')
 for feature in classi_features:
