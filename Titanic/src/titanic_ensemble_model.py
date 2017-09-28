@@ -7,6 +7,7 @@ from sklearn.grid_search import GridSearchCV
 from sklearn.ensemble import RandomForestClassifier, VotingClassifier
 import csv
 import math
+import re
 
 ### Data Loading ###
 data = pd.read_csv('../datasets/train.csv')
@@ -16,14 +17,14 @@ del data['PassengerId']
 data_y = pd.DataFrame(data, columns=['Survived'])
 del data['Survived']
 del data['Ticket']
+del submit_data['Ticket']
 data_names = pd.DataFrame(data, columns=['Name'])
 submit_data_names = pd.DataFrame(submit_data, columns=['Name'])
-del submit_data['Ticket']
 del submit_data['PassengerId']
 
 ### FEATURE ENGINEERING - Data Preprocessing ###
 
-###Introduce New variables based on titles of passengers ###
+###Introduce New variables###
 data['Title'] = data['Name'].map(lambda name: name.split(',')[1].split('.')[0].strip())
 submit_data['Title'] = submit_data['Name'].map(lambda name: name.split(',')[1].split('.')[0].strip())
 del data['Name']
@@ -80,9 +81,6 @@ for feature in classi_features:
     del data[feature]
     del submit_data[feature]
 
-
-train_data_x, test_data_x, train_data_y, test_data_y = train_test_split(data, data_y, train_size=0.7)
-
 ### Hyper Parameters Tuning ###
 ### Ridge Tuning ###
 # ridge_model = RidgeClassifier()
@@ -122,35 +120,31 @@ ridge_model = RidgeClassifier(alpha=0.001, normalize=True)
 xgb_model = XGBClassifier(n_estimators=200, reg_lambda=0.001, learning_rate=0.0001, reg_alpha=0.01, booster='gbtree')
 rnd_forest_model = RandomForestClassifier(max_features=0.2, min_samples_split=2, criterion='gini', max_depth=10,
                                           n_estimators=500)
-rnd_forest_model.fit(train_data_x, train_data_y.values.ravel())
-xgb_model.fit(train_data_x, train_data_y.values.ravel())
-ridge_model.fit(train_data_x, train_data_y.values.ravel())
+rnd_forest_model.fit(data, data_y.values.ravel())
+xgb_model.fit(data, data_y.values.ravel())
+ridge_model.fit(data, data_y.values.ravel())
 
 ### Ensembling ###
 ens_model = VotingClassifier(estimators=[('RF', rnd_forest_model), ('RR', ridge_model), ('XGB', xgb_model)],
                              weights=[1, 1, 1])
-ens_model.fit(train_data_x, train_data_y.values.ravel())
+ens_model.fit(data, data_y.values.ravel())
 
 ### Performance Analysis ###
 print 'Random Forest:'
-print 'Cross Val Score = ' + str(np.mean(cross_val_score(rnd_forest_model, train_data_x, train_data_y.values.ravel(),
+print 'Cross Val Score = ' + str(np.mean(cross_val_score(rnd_forest_model, data, data_y.values.ravel(),
                                                          scoring='accuracy', cv=10)))
-print 'F Score = ' + str(rnd_forest_model.score(test_data_x, test_data_y.values.ravel()))
 
 print 'XGB Classifier:'
-print 'Cross Val Score = ' + str(np.mean(cross_val_score(xgb_model, train_data_x, train_data_y.values.ravel(),
+print 'Cross Val Score = ' + str(np.mean(cross_val_score(xgb_model, data, data_y.values.ravel(),
                                                          scoring='accuracy', cv=10)))
-print 'F Score = ' + str(xgb_model.score(test_data_x, test_data_y.values.ravel()))
 
 print 'Ridge Classifier:'
-print 'Cross Val Score = ' + str(np.mean(cross_val_score(ridge_model, train_data_x, train_data_y.values.ravel(),
+print 'Cross Val Score = ' + str(np.mean(cross_val_score(ridge_model, data, data_y.values.ravel(),
                                                          scoring='accuracy', cv=10)))
-print 'F Score = ' + str(ridge_model.score(test_data_x, test_data_y.values.ravel()))
 
 print 'Ensemble Model:'
-print 'Cross Val Score = ' + str(np.mean(cross_val_score(ens_model, train_data_x, train_data_y.values.ravel(),
+print 'Cross Val Score = ' + str(np.mean(cross_val_score(ens_model, data, data_y.values.ravel(),
                                                          scoring='accuracy', cv=10)))
-print 'F Score = ' + str(ens_model.score(test_data_x, test_data_y.values.ravel()))
 
 ### Predictions ###
 rnd_predictions = rnd_forest_model.predict(submit_data)
@@ -166,6 +160,7 @@ out_ens = csv.writer(open('Submission_Ensemble.csv', 'w'), delimiter=',', quotin
 out_rnd.writerow(['PassengerId', 'Survived'])
 out_xgb.writerow(['PassengerId', 'Survived'])
 out_ens.writerow(['PassengerId', 'Survived'])
+out_ridge.writerow(['PassengerId', 'Survived'])
 for i in range(len(rnd_predictions)):
     passId = passenger_ids[i]
     out_rnd.writerow([passId, rnd_predictions[i]])
