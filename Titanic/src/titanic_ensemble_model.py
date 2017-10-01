@@ -7,9 +7,8 @@ from sklearn.grid_search import GridSearchCV
 from sklearn.ensemble import RandomForestClassifier, VotingClassifier
 import csv
 import math
-import re
 
-### Data Loading ###
+# Data Loading
 data = pd.read_csv('../datasets/train.csv')
 submit_data = pd.read_csv('../datasets/test.csv')
 passenger_ids = submit_data['PassengerId']
@@ -22,22 +21,22 @@ data_names = pd.DataFrame(data, columns=['Name'])
 submit_data_names = pd.DataFrame(submit_data, columns=['Name'])
 del submit_data['PassengerId']
 
-### FEATURE ENGINEERING - Data Preprocessing ###
+# FEATURE ENGINEERING - Data Preprocessing
 
-###Introduce New variables###
+# Introduce New variables
 data['Title'] = data['Name'].map(lambda name: name.split(',')[1].split('.')[0].strip())
 submit_data['Title'] = submit_data['Name'].map(lambda name: name.split(',')[1].split('.')[0].strip())
 del data['Name']
 del submit_data['Name']
 
-###Numeric Features ###
+# Numeric Features
 numeric_features = list(data.dtypes[data.dtypes != 'object'].index)
 numeric_features.remove('Pclass')
 age_dict = {}
 age_dict_submit = {}
 for feature in numeric_features:
     if feature == 'Age':
-        ### Replace NA age by computing the mean of ages based on Sex, Pclass and Sex ###
+        # Replace NA age by computing the mean of ages based on Sex, Pclass and Sex
         for index, row in data.iterrows():
             age = row['Age']
             if math.isnan(age):
@@ -70,7 +69,7 @@ for feature in numeric_features:
         data[feature].fillna(np.mean(data[feature]), inplace=True)
         submit_data[feature].fillna(np.mean(submit_data[feature]), inplace=True)
 
-### Classification Variables ###
+# Classification Variables
 classi_features = list(data.dtypes[data.dtypes == 'object'].index)
 classi_features.append('Pclass')
 for feature in classi_features:
@@ -81,8 +80,8 @@ for feature in classi_features:
     del data[feature]
     del submit_data[feature]
 
-### Hyper Parameters Tuning ###
-### Ridge Tuning ###
+# Hyper Parameters Tuning
+# Ridge Tuning ###
 # ridge_model = RidgeClassifier()
 # grid_param = {'alpha': [1.0, 0.1, 0.001, 0.0001, 0.00001]}
 # grid_model = GridSearchCV(ridge_model, grid_param, verbose=1, cv=10, n_jobs=-1, scoring='accuracy')
@@ -90,7 +89,7 @@ for feature in classi_features:
 # tuned_alpha = grid_model.best_params_.get('alpha')
 # tuned alpha - 0.001
 
-### XGB Tuning ###
+# XGB Tuning
 # xgb_model = XGBClassifier()
 # grid_param = {'learning_rate': [0.001, 0.0001],
 #           'booster': ['gblinear', 'gbtree', 'dart'],
@@ -101,7 +100,7 @@ for feature in classi_features:
 # grid_model.fit(train_data_x, train_data_y.values.ravel())
 # {'n_estimators': 200, 'reg_lambda': 0.001, 'learning_rate': 0.0001, 'reg_alpha': 0.01, 'booster': 'gbtree'}
 
-### Random Forest Tuning ###
+# Random Forest Tuning
 # rnd_for_model = RandomForestClassifier()
 # grid_param = { "n_estimators": [100, 200, 500],
 #                "criterion": ["gini", "entropy"],
@@ -111,11 +110,12 @@ for feature in classi_features:
 # grid_model = GridSearchCV(rnd_for_model, grid_param, verbose=1, cv=10, n_jobs=-1, scoring='accuracy')
 # grid_model.fit(train_data_x, train_data_y.values.ravel())
 # # {'max_features': 0.2, 'min_samples_split': 2, 'criterion': 'gini', 'max_depth': 10, 'n_estimators': 500}
-# #10 fold cv - {'max_features': 0.8, 'min_samples_split': 5, 'criterion': 'entropy', 'max_depth': 10, 'n_estimators': 500}
+# 10 fold cv - {'max_features': 0.8, 'min_samples_split': 5, 'criterion': 'entropy', \
+# 'max_depth': 10, 'n_estimators': 500}
 # print grid_model.best_score_
 # print grid_model.best_params_
 
-### Training Model ###
+# Training Model
 ridge_model = RidgeClassifier(alpha=0.001, normalize=True)
 xgb_model = XGBClassifier(n_estimators=200, reg_lambda=0.001, learning_rate=0.0001, reg_alpha=0.01, booster='gbtree')
 rnd_forest_model = RandomForestClassifier(max_features=0.2, min_samples_split=2, criterion='gini', max_depth=10,
@@ -124,12 +124,12 @@ rnd_forest_model.fit(data, data_y.values.ravel())
 xgb_model.fit(data, data_y.values.ravel())
 ridge_model.fit(data, data_y.values.ravel())
 
-### Ensembling ###
+# Ensemble
 ens_model = VotingClassifier(estimators=[('RF', rnd_forest_model), ('RR', ridge_model), ('XGB', xgb_model)],
                              weights=[1, 1, 1])
 ens_model.fit(data, data_y.values.ravel())
 
-### Performance Analysis ###
+# Performance Analysis
 print 'Random Forest:'
 print 'Cross Val Score = ' + str(np.mean(cross_val_score(rnd_forest_model, data, data_y.values.ravel(),
                                                          scoring='accuracy', cv=10)))
@@ -146,13 +146,13 @@ print 'Ensemble Model:'
 print 'Cross Val Score = ' + str(np.mean(cross_val_score(ens_model, data, data_y.values.ravel(),
                                                          scoring='accuracy', cv=10)))
 
-### Predictions ###
+# Predictions
 rnd_predictions = rnd_forest_model.predict(submit_data)
 xgb_predictions = xgb_model.predict(submit_data)
 ridge_predictions = ridge_model.predict(submit_data)
 ens_predictions = ens_model.predict(submit_data)
 
-### Submission ###
+# Submission
 out_rnd = csv.writer(open('Submission_Random.csv', 'w'), delimiter=',', quoting=csv.QUOTE_ALL)
 out_xgb = csv.writer(open('Submission_XGB.csv', 'w'), delimiter=',', quoting=csv.QUOTE_ALL)
 out_ridge = csv.writer(open('Submission_Ridge.csv', 'w'), delimiter=',', quoting=csv.QUOTE_ALL)
